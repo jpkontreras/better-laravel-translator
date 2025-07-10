@@ -25,7 +25,8 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "virtual-module.d.ts"
   ],
   "exclude": [
     "node_modules",
