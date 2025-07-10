@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs'
-import { basename } from 'path'
+import { basename, join, relative } from 'path'
 import { Engine } from 'php-parser'
 import { scanDirectory, TranslationFile, ScanOptions } from './scanner'
 import { resolveGlobPatternsWithCache } from './glob-resolver'
@@ -177,9 +177,8 @@ function buildFileTranslations(
   
   // PHP files need to be organized by their path structure
   // Get the path relative to the locale directory
-  const path = require('path')
-  const localePath = path.join(file.basePath, file.locale)
-  const relativePath = path.relative(localePath, file.path)
+  const localePath = join(file.basePath, file.locale)
+  const relativePath = relative(localePath, file.path)
     .replace(/\.php$/, '') // Remove extension
   
   // If it's just a filename (no subdirectories), return content directly

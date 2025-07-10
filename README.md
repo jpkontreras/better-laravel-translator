@@ -94,6 +94,22 @@ This creates a structure like:
 }
 ```
 
+### Automatic Locale Detection
+
+The package automatically detects your locale from Laravel's environment variables. Simply add these to your `.env` file:
+
+```env
+# Laravel's locale settings
+APP_LOCALE=es
+APP_FALLBACK_LOCALE=en
+
+# Make them available to Vite/frontend (required)
+VITE_APP_LOCALE="${APP_LOCALE}"
+VITE_APP_FALLBACK_LOCALE="${APP_FALLBACK_LOCALE}"
+```
+
+That's it! The package will automatically use `es` as the locale. No code changes needed.
+
 ### In Your Application
 
 All the translation functions work exactly as in the original package:
@@ -101,15 +117,15 @@ All the translation functions work exactly as in the original package:
 ```js
 import { __, trans, setLocale } from 'better-laravel-translator'
 
-// Use translations
-console.log(__('messages.welcome'))
+// Translations automatically use VITE_APP_LOCALE from .env
+console.log(__('messages.welcome'))  // Shows Spanish translation
 console.log(trans('validation.required', { attribute: 'email' }))
 
 // With module namespacing
 console.log(__('modules.user.profile.name'))
 
-// Change locale
-setLocale('es')
+// You can still manually change locale if needed
+setLocale('fr')
 ```
 
 ## 📋 Configuration Options

@@ -1,4 +1,4 @@
-import { normalize, sep } from 'path'
+import { normalize, sep, resolve } from 'path'
 
 export function extractModuleName(
   fullPath: string, 
@@ -36,7 +36,7 @@ export function extractModuleName(
   // If basePath doesn't start with / or drive letter (Windows), make it absolute for comparison
   const isAbsolute = baseDir.startsWith(sep) || baseDir.match(/^[A-Za-z]:/)
   if (!isAbsolute) {
-    baseDir = normalize(require('path').resolve(baseDir))
+    baseDir = normalize(resolve(baseDir))
   }
   
   // If the full path doesn't start with the base directory, it's not a match

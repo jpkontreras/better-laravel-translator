@@ -1,5 +1,4 @@
 import * as path from 'path'
-import { Plugin } from 'vite'
 import { exportTranslations } from './exporter'
 import { BetterLaravelTranslatorOptions } from './types'
 import { clearGlobCache } from './glob-resolver'
@@ -15,7 +14,7 @@ const RESOLVED_VIRTUAL_MODULE_ID = '\0' + VIRTUAL_MODULE_ID
 
 export default function betterLaravelTranslator(
   options: string | VitePluginOptionsInterface | BetterLaravelTranslatorOptions = 'lang'
-): Plugin {
+): any {
   // Handle backward compatibility with original API
   let config: BetterLaravelTranslatorOptions
   
@@ -45,14 +44,14 @@ export default function betterLaravelTranslator(
       },
     }),
     
-    resolveId(id) {
+    resolveId(id: string) {
       if (id === VIRTUAL_MODULE_ID) {
         return RESOLVED_VIRTUAL_MODULE_ID
       }
       return null
     },
     
-    load(id) {
+    load(id: string) {
       if (id === RESOLVED_VIRTUAL_MODULE_ID) {
         const translations = exportTranslations(config)
         return `export default ${JSON.stringify(translations)}`
@@ -60,7 +59,7 @@ export default function betterLaravelTranslator(
       return null
     },
     
-    handleHotUpdate(ctx) {
+    handleHotUpdate(ctx: any) {
       // Clear glob cache on hot update
       clearGlobCache()
       

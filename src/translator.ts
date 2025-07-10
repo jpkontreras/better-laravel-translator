@@ -57,11 +57,31 @@ const translate = (translation: string | object, replace: Record<string, any> = 
     return translation
 }
 
-// Create a singleton config object
+// Create a singleton config object with automatic locale detection
 let currentConfig: Config = {
     locale: 'en',
     fallbackLocale: 'en',
     translations: {}
+}
+
+// Automatically detect locale from Vite environment variables
+// Use try-catch to handle environments where import.meta is not available (like CommonJS)
+try {
+    // @ts-ignore - import.meta might not be available in all environments
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+        // @ts-ignore
+        if (import.meta.env.VITE_APP_LOCALE) {
+            // @ts-ignore
+            currentConfig.locale = import.meta.env.VITE_APP_LOCALE
+        }
+        // @ts-ignore
+        if (import.meta.env.VITE_APP_FALLBACK_LOCALE) {
+            // @ts-ignore
+            currentConfig.fallbackLocale = import.meta.env.VITE_APP_FALLBACK_LOCALE
+        }
+    }
+} catch (e) {
+    // Silent fail for environments where import.meta is not available
 }
 
 // Export the translation functions with the same API as original package

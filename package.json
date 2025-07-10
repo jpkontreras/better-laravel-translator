@@ -1,8 +1,21 @@
 {
   "name": "better-laravel-translator",
   "type": "module",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Enhanced Laravel localization for your frontend with glob patterns and module namespacing",
+  "keywords": [
+    "laravel",
+    "laravel-translator",
+    "localization",
+    "i18n",
+    "internationalization",
+    "translation",
+    "vite",
+    "vite-plugin",
+    "glob",
+    "vue",
+    "typescript"
+  ],
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -41,17 +54,20 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/better-laravel-translator.git"
+    "url": "git+https://github.com/jpkontreras/better-laravel-translator.git"
   },
-  "author": "Your Name",
+  "author": "jpkontreras",
   "contributors": [
     "Sergio Brighenti (original laravel-translator)"
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/your-username/better-laravel-translator/issues"
+    "url": "https://github.com/jpkontreras/better-laravel-translator/issues"
   },
-  "homepage": "https://github.com/your-username/better-laravel-translator#readme",
+  "homepage": "https://github.com/jpkontreras/better-laravel-translator#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
   "devDependencies": {
     "@types/node": "^20.10.4",
     "@vitest/coverage-v8": "^1.0.4",
@@ -64,5 +80,14 @@
   "dependencies": {
     "glob": "^10.3.10",
     "php-parser": "^3.1.5"
+  },
+  "peerDependencies": {
+    "vite": ">=4.0.0",
+    "vue": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vue": {
+      "optional": true
+    }
   }
 }

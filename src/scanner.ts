@@ -1,5 +1,5 @@
 import { readdirSync, statSync } from 'fs'
-import { join, relative, sep } from 'path'
+import { join, relative, sep, resolve } from 'path'
 import { glob } from 'glob'
 
 export interface TranslationFile {
@@ -108,11 +108,11 @@ export function scanDirectory(
 
 export function validatePath(filePath: string, allowedPaths: string[]): boolean {
   // Resolve to absolute path to prevent traversal attacks
-  const resolvedPath = require('path').resolve(filePath)
+  const resolvedPath = resolve(filePath)
   
   // Check if the resolved path is within any allowed path
   return allowedPaths.some(allowed => {
-    const resolvedAllowed = require('path').resolve(allowed)
+    const resolvedAllowed = resolve(allowed)
     return resolvedPath.startsWith(resolvedAllowed + sep) || 
            resolvedPath === resolvedAllowed
   })
