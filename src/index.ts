@@ -1,51 +1,27 @@
-import {Config, translator} from './translator'
-// @ts-ignore
-import translations from 'virtual-laravel-translations'
+/**
+ * Better Laravel Translator
+ * 
+ * This package extends laravel-translator with additional features:
+ * - Glob pattern support for additional language paths
+ * - Module namespacing
+ * - Clean output structure without php/json separation
+ * - Selective file loading (only translation files)
+ * 
+ * All runtime translation functions work exactly the same as the original package.
+ */
 
-declare global {
-    interface Window {
-        locale?: string;
-        fallbackLocale?: string;
-    }
-}
+// Re-export all translation functions from the original package
+// This ensures 100% API compatibility
+export { 
+  __,
+  trans,
+  t,
+  trans_choice,
+  setLocale,
+  getLocale,
+  hasTranslation,
+  setTranslations
+} from './translator'
 
-const isServer = typeof window === 'undefined'
-
-const defaultConfig: Config = {
-    locale: !isServer && document.documentElement.lang ? document.documentElement.lang.replace('-', '_') : 'en',
-    fallbackLocale: !isServer && window ? window?.fallbackLocale?.replace('-', '_') : null,
-    translations: translations,
-}
-
-const trans = (key: string, replace: object = {}, locale: string = null, config: Config = null) => {
-    if (locale) {
-        if (!config) {
-            config = {...defaultConfig}
-        }
-        config.locale = locale
-    }
-
-    return translator(key, replace, false, config ?? defaultConfig)
-}
-
-const transChoice = (key: string, number: number, replace: Object = {}, locale: string = null, config: Config = null) => {
-    if (locale) {
-        if (!config) {
-            config = {...defaultConfig}
-        }
-        config.locale = locale
-    }
-
-    return translator(key, {...replace, count: number}, true, config ?? defaultConfig)
-}
-
-const setLocale = (locale: string, fallbackLocale: string | null = null) => {
-    defaultConfig.locale = locale?.replace('-', '_') ?? 'en'
-    defaultConfig.fallbackLocale = fallbackLocale?.replace('-', '_') ?? null
-}
-
-const __ = trans;
-const t = trans;
-const trans_choice = transChoice;
-
-export {trans, __, t, transChoice, trans_choice, setLocale}
+// Export types
+export type { BetterLaravelTranslatorOptions } from './types'

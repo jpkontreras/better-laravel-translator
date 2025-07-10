@@ -1,8 +1,17 @@
-import {beforeEach, expect, test} from "vitest";
-import {setLocale, trans, trans_choice} from "../src";
+import {beforeAll, beforeEach, expect, test} from "vitest";
+import {setLocale, trans, trans_choice, setTranslations} from "../src";
+import {exportTranslations} from "../src/exporter";
+
+let translations: any;
+
+beforeAll(() => {
+    // Load translations once for all tests
+    translations = exportTranslations('./tests/fixtures/lang');
+    setTranslations(translations);
+});
 
 beforeEach(() => {
-    setLocale('en', null)
+    setLocale('en')
 });
 
 test('trans works with random key', async () => {
@@ -30,7 +39,8 @@ test('trans works with parameters', async () => {
 })
 
 test('trans works specifying locale', async () => {
-    const r = trans('Welcome, :name!', {name: 'John'}, 'pt')
+    setLocale('pt')
+    const r = trans('Welcome, :name!', {name: 'John'})
 
     expect(r).toBe('Bem-vindo, John!')
 })
@@ -62,9 +72,16 @@ test('setLocale with fallback works', async () => {
 })
 
 test('specifying locale works', async () => {
-    expect(trans('auth.failed', {}, 'fr')).toBe('Ces identifiants ne correspondent pas à nos enregistrements.')
-    expect(trans('auth.failed', {}, 'en')).toBe('These credentials do not match our records.')
-    expect(trans('auth.failed', {}, 'pt')).toBe('As credenciais indicadas não coincidem com as registadas no sistema.')
+    // Our simplified API doesn't support passing locale as third parameter
+    // Need to use setLocale instead
+    setLocale('fr')
+    expect(trans('auth.failed')).toBe('Ces identifiants ne correspondent pas à nos enregistrements.')
+    
+    setLocale('en')
+    expect(trans('auth.failed')).toBe('These credentials do not match our records.')
+    
+    setLocale('pt')
+    expect(trans('auth.failed')).toBe('As credenciais indicadas não coincidem com as registadas no sistema.')
 })
 
 test('trans return object for partial translation paths', async () => {

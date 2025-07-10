@@ -1,32 +1,17 @@
-import {trans, trans_choice} from "./index";
-import {App, computed, Ref} from "vue";
-import {Config} from "./translator";
-
-// @ts-ignore
-import translations from 'virtual-laravel-translations';
+import {trans, trans_choice, setLocale} from "./index";
+import {App, Ref} from "vue";
 
 export const LaravelTranslatorVue = {
-    install: (app: App, options: ConfigVue) => {
-        const locale = options.locale || '';
-        const fallbackLocale = options.fallbackLocale || '';
+    install: (app: App, options?: ConfigVue) => {
+        // Set initial locale if provided
+        if (options?.locale) {
+            const localeValue = typeof options.locale === 'string' ? options.locale : options.locale.value
+            setLocale(localeValue)
+        }
 
-        const configuration = computed(() => ({
-            locale: (typeof locale === 'string') ? locale : locale?.value,
-            fallbackLocale: (typeof fallbackLocale === 'string') ? fallbackLocale : fallbackLocale?.value,
-            translations: translations,
-        }));
+        const translationCallback = (key: string, replace?: object) => trans(key, replace || {});
 
-        const translationCallback = (key: string, replace?: object, locale?: string) => trans(key, replace, undefined, {
-            locale: locale || configuration.value.locale,
-            fallbackLocale: configuration.value.fallbackLocale,
-            translations: configuration.value.translations,
-        });
-
-        const translationWithPluralizationCallback = (key: string, number: number, replace?: Object, locale?: string) => trans_choice(key, number, replace, undefined, {
-            locale: locale || configuration.value.locale,
-            fallbackLocale: configuration.value.fallbackLocale,
-            translations: configuration.value.translations,
-        });
+        const translationWithPluralizationCallback = (key: string, number: number, replace?: object) => trans_choice(key, number, replace || {});
 
         if (parseInt(app.version) > 2) {
             app.provide('__', translationCallback);
@@ -58,11 +43,11 @@ export const LaravelTranslatorVue = {
 
 declare module '@vue/runtime-core' {
     export interface ComponentCustomProperties {
-        trans: (key: string, replace?: object, locale?: string, config?: Config) => string;
-        transChoice: (key: string, number: number, replace?: Object, locale?: string, config?: Config) => string;
-        __: (key: string, replace?: object, locale?: string, config?: Config) => string;
-        t: (key: string, replace?: object, locale?: string, config?: Config) => string;
-        trans_choice: (key: string, number: number, replace?: Object, locale?: string, config?: Config) => string;
+        trans: (key: string, replace?: object) => string;
+        transChoice: (key: string, number: number, replace?: object) => string;
+        __: (key: string, replace?: object) => string;
+        t: (key: string, replace?: object) => string;
+        trans_choice: (key: string, number: number, replace?: object) => string;
     }
 }
 

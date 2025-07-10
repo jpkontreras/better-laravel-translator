@@ -1,128 +1,208 @@
-import {glob} from "glob";
-import {basename, sep, join} from "path";
-import {Engine, Return} from 'php-parser'
-import {writeFileSync, readFileSync} from "fs";
+import { readFileSync } from 'fs'
+import { basename } from 'path'
+import { Engine } from 'php-parser'
+import { scanDirectory, TranslationFile, ScanOptions } from './scanner'
+import { resolveGlobPatternsWithCache } from './glob-resolver'
+import { extractModuleName, applyNamespacing, mergeNamespacedTranslations } from './namespace'
+import { BetterLaravelTranslatorOptions } from './types'
 
-interface CandidateTranslation {
-    type: 'php' | 'json'
-    basePath: string
-    path: string
-    name: string | null
-    nesting: string[]
-    locale: string
-}
+const phpEngine = new Engine({})
 
-const engine = new Engine({})
+export function exportTranslations(pathOrOptions: string | BetterLaravelTranslatorOptions): Record<string, any> {
+  // Handle backward compatibility - if string, use as langPath
+  const options: BetterLaravelTranslatorOptions = typeof pathOrOptions === 'string' 
+    ? { langPath: pathOrOptions }
+    : pathOrOptions
 
-export const exportTranslations = (...paths: string[]) => {
-    const translationFiles: CandidateTranslation[] = []
-
-    paths.forEach((path) => {
-        translationFiles.push(...getTranslationCandidates(`./**/*.php`, path, 'php'))
-        translationFiles.push(...getTranslationCandidates(`*.json`, path, 'json'))
+  const {
+    langPath = 'lang',
+    additionalLangPaths = [],
+    namespaceModules = false,
+    excludePaths,
+    locales,
+    includeJson = true,
+    includePhp = true
+  } = options
+  
+  // Collect all paths to scan
+  const pathsToScan: Array<{ path: string; pattern?: string }> = [
+    { path: langPath }
+  ]
+  
+  // Resolve glob patterns in additional paths
+  if (additionalLangPaths.length > 0) {
+    // Track which pattern resolved to which paths for module naming
+    additionalLangPaths.forEach(pattern => {
+      const resolved = resolveGlobPatternsWithCache([pattern], { excludePaths })
+      resolved.forEach(path => {
+        pathsToScan.push({ path, pattern })
+      })
     })
-
-    const translations = {}
-
-    translationFiles.forEach((candidate) => {
-        let content: null | object
-        if (candidate.type === 'php') {
-            content = importPhpFile(candidate.basePath, candidate);
-        } else {
-            content = importJsonFile(candidate.basePath, candidate);
-        }
-
-        if (!content) {
-            return
-        }
-
-        if (!translations[candidate.locale]) {
-            translations[candidate.locale] = {}
-        }
-
-        if (!translations[candidate.locale][candidate.type]) {
-            translations[candidate.locale][candidate.type] = {}
-        }
-
-        let current = translations[candidate.locale][candidate.type]
-        candidate.nesting.forEach((nest) => {
-            if (!current[nest]) {
-                current[nest] = {}
-            }
-
-            current = current[nest]
-        })
-
-        if (candidate.name) {
-            current[candidate.name] = content
-        } else {
-            translations[candidate.locale][candidate.type] = {...current, ...content}
-        }
-    })
-
-    return translations
+  }
+  
+  // Scan all directories for translation files
+  const scanOptions: ScanOptions = {
+    includeJson,
+    includePhp,
+    locales
+  }
+  
+  const allTranslationFiles: Array<TranslationFile & { basePath: string; pattern?: string }> = []
+  
+  for (const { path, pattern } of pathsToScan) {
+    const files = scanDirectory(path, scanOptions)
+    allTranslationFiles.push(...files.map(file => ({
+      ...file,
+      basePath: path,
+      pattern
+    })))
+  }
+  
+  // Process all translation files
+  let translations: Record<string, any> = {}
+  
+  for (const file of allTranslationFiles) {
+    const content = loadTranslationFile(file)
+    if (!content) continue
+    
+    // Extract module name if using additional paths with namespacing
+    let moduleName: string | null = null
+    if (namespaceModules && file.pattern) {
+      moduleName = extractModuleName(file.basePath, file.pattern)
+    }
+    
+    // Build the translation structure for this file
+    const fileTranslations = buildFileTranslations(file, content)
+    
+    // Apply namespacing if needed
+    const namespacedTranslations = applyNamespacing(
+      fileTranslations,
+      moduleName,
+      namespaceModules
+    )
+    
+    // Merge into main translations object
+    translations = mergeNamespacedTranslations(
+      translations,
+      namespacedTranslations,
+      file.locale
+    )
+  }
+  
+  return translations
 }
 
-const getTranslationCandidates = (pattern: string, path: string, type: 'php' | 'json'): CandidateTranslation[] => {
-    return glob.sync(pattern, {cwd: path}).map((transPath) => {
-        const withoutExtension = transPath.split('.').shift()
-        const name = type === 'php' ? basename(withoutExtension).toLocaleLowerCase() : null
-        const locale = withoutExtension.split(sep).shift().toLocaleLowerCase()
-        const nesting = withoutExtension.split(sep).slice(1, -1)
-        return {
-            type,
-            basePath: path,
-            path: transPath,
-            name,
-            nesting,
-            locale,
-        }
-    })
+function loadTranslationFile(file: TranslationFile & { basePath: string }): any {
+  try {
+    const content = readFileSync(file.path, 'utf-8')
+    
+    if (file.type === 'json') {
+      return JSON.parse(content)
+    } else {
+      return parsePhpFile(content, basename(file.path))
+    }
+  } catch (error) {
+    console.warn(`Warning: Failed to load translation file ${file.path}:`, error instanceof Error ? error.message : String(error))
+    return null
+  }
 }
 
-const importJsonFile = (basePath: string, file: CandidateTranslation): object => {
-    const content = readFileSync(join(basePath, file.path)).toString()
-    return JSON.parse(content)
+function parsePhpFile(content: string, filename: string): any {
+  try {
+    const ast = phpEngine.parseCode(content, filename)
+    const returnStatement = ast.children.find((child: any) => child.kind === 'return') as any
+    
+    if (!returnStatement?.expr || returnStatement.expr.kind !== 'array') {
+      return null
+    }
+    
+    return parsePhpExpression(returnStatement.expr)
+  } catch (error) {
+    console.warn(`Warning: Failed to parse PHP file ${filename}:`, error instanceof Error ? error.message : String(error))
+    return null
+  }
 }
 
-const importPhpFile = (basePath: string, file: CandidateTranslation): object | null => {
-    const content = readFileSync(join(basePath, file.path)).toString()
-    const phpArray = engine.parseCode(content, basename(file.path))
-        .children.filter((child) => child.kind === 'return')[0] as Return
-
-    if (phpArray?.expr?.kind !== 'array') {
-        return null
-    }
-
-    return parseExpr(phpArray.expr)
+function parsePhpExpression(expr: any): any {
+  switch (expr.kind) {
+    case 'string':
+      return expr.value
+      
+    case 'number':
+      return expr.value
+      
+    case 'boolean':
+      return expr.value
+      
+    case 'array':
+      const items = expr.items.map((item: any) => parsePhpExpression(item))
+      
+      // Check if it's an associative array
+      if (expr.items.every((item: any) => item.key !== null)) {
+        return items.reduce((acc: any, val: any) => Object.assign({}, acc, val), {})
+      }
+      
+      return items
+      
+    case 'bin':
+      // Handle string concatenation
+      if (expr.type === '.') {
+        return parsePhpExpression(expr.left) + parsePhpExpression(expr.right)
+      }
+      return null
+      
+    default:
+      // Handle array items with keys
+      if (expr.key) {
+        return { [parsePhpExpression(expr.key)]: parsePhpExpression(expr.value) }
+      }
+      
+      // Handle other value types
+      if (expr.value !== undefined) {
+        return parsePhpExpression(expr.value)
+      }
+      
+      return null
+  }
 }
 
-const parseExpr = (expr) => {
-    if (expr.kind === 'string') {
-        return expr.value
-    }
-
-    if (expr.kind === 'array') {
-        let items = expr.items.map((item) => parseExpr(item))
-
-        if (expr.items.every((item) => item.key !== null)) {
-            items = items.reduce((acc, val) => Object.assign({}, acc, val), {})
-        }
-
-        return items
-    }
-
-    if (expr.kind === 'bin') {
-        return parseExpr(expr.left) + parseExpr(expr.right)
-    }
-
-    if (expr.key) {
-        return {[expr.key.value]: parseExpr(expr.value)}
-    }
-
-    return parseExpr(expr.value)
-}
-
-export const saveJsonFile = (path: string, content: object) => {
-    writeFileSync(join(path, 'translations.json'), JSON.stringify(content))
+function buildFileTranslations(
+  file: TranslationFile & { basePath: string },
+  content: any
+): Record<string, any> {
+  if (file.type === 'json') {
+    // JSON files go directly under the locale
+    return content
+  }
+  
+  // PHP files need to be organized by their path structure
+  // Get the path relative to the locale directory
+  const path = require('path')
+  const localePath = path.join(file.basePath, file.locale)
+  const relativePath = path.relative(localePath, file.path)
+    .replace(/\.php$/, '') // Remove extension
+  
+  // If it's just a filename (no subdirectories), return content directly
+  if (!relativePath.includes('/') && !relativePath.includes('\\')) {
+    return { [relativePath]: content }
+  }
+  
+  // Build nested structure based on file path
+  const parts = relativePath.split(/[/\\]/)
+  const fileName = parts[parts.length - 1]
+  const directories = parts.slice(0, -1)
+  
+  let result: any = {}
+  let current = result
+  
+  // Build nested structure for directories
+  for (const dir of directories) {
+    current[dir] = {}
+    current = current[dir]
+  }
+  
+  // Set the file content
+  current[fileName] = content
+  
+  return result
 }
