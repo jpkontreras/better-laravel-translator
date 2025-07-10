@@ -198,11 +198,9 @@ Unlike the original package that loads all JSON files, we use strict validation 
 - Examples: `lang/en.json`, `lang/es.json`, `lang/pt_BR.json`
 - Cannot be in subdirectories - only at the lang path root
 
-This strict validation means configuration files like `composer.json` or `package.json` are never included in your translation bundle.
+#### Directory Structure Example
 
-#### Directory Structure Examples
-
-**✅ Valid structures that will be loaded:**
+**Valid structures that will be loaded:**
 ```
 lang/
 ├── en/                    # Valid locale directory
@@ -214,19 +212,6 @@ lang/
 │   └── messages.php      # ✓ Loaded
 ├── en.json              # ✓ Loaded (locale JSON at root)
 └── es.json              # ✓ Loaded
-```
-
-**❌ Invalid structures that will be ignored:**
-```
-lang/
-├── composer.json         # ✗ Not a locale-named JSON
-├── package.json          # ✗ Not a locale-named JSON
-├── config/              # ✗ Not a valid locale name
-│   └── app.php          # ✗ Ignored
-├── en/
-│   ├── en.json          # ✗ JSON files not allowed in locale dirs
-│   └── config.json      # ✗ JSON files not allowed in locale dirs
-└── translations.json     # ✗ Not a locale-named JSON
 ```
 
 ### Clean Output Structure
