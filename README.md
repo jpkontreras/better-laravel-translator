@@ -174,13 +174,60 @@ Then in your components:
 
 ## 🌟 Features
 
+### Smart Locale Detection
+
+We've added intelligent locale folder discovery that automatically finds your translation directories:
+
+- **Automatic locale detection**: Scans for directories matching locale patterns (`en`, `es`, `fr`, `en_US`, etc.)
+- **Laravel-compatible patterns**: Only looks for translation files in the expected locations
+- **No manual configuration**: Works out-of-the-box with standard Laravel directory structures
+
+The package uses a locale pattern (`/^[a-z]{2}(_[A-Z]{2})?$/`) to identify valid locale directories, supporting both simple locales like `en` and regional variants like `en_US`.
+
 ### Selective File Loading
 
-Unlike the original package that loads all JSON files, we only load:
-- PHP files in locale directories: `lang/en/*.php`
-- JSON files named by locale: `lang/en.json`
+Unlike the original package that loads all JSON files, we use strict validation to ensure only translation files are loaded:
 
-This means configuration files like `composer.json` or `package.json` are never included in your translation bundle.
+**PHP Files:**
+- Must be inside a valid locale directory (e.g., `lang/en/`, `lang/es_MX/`)
+- Can be nested in subdirectories: `lang/en/auth.php`, `lang/en/admin/dashboard.php`
+- The locale directory name must match the pattern: `/^[a-z]{2}(_[A-Z]{2})?$/`
+
+**JSON Files:**
+- Must be named exactly as `{locale}.json` at the root level
+- Examples: `lang/en.json`, `lang/es.json`, `lang/pt_BR.json`
+- Cannot be in subdirectories - only at the lang path root
+
+This strict validation means configuration files like `composer.json` or `package.json` are never included in your translation bundle.
+
+#### Directory Structure Examples
+
+**✅ Valid structures that will be loaded:**
+```
+lang/
+├── en/                    # Valid locale directory
+│   ├── auth.php          # ✓ Loaded
+│   ├── validation.php    # ✓ Loaded
+│   └── admin/
+│       └── users.php     # ✓ Loaded (nested files supported)
+├── es/                   # Valid locale directory
+│   └── messages.php      # ✓ Loaded
+├── en.json              # ✓ Loaded (locale JSON at root)
+└── es.json              # ✓ Loaded
+```
+
+**❌ Invalid structures that will be ignored:**
+```
+lang/
+├── composer.json         # ✗ Not a locale-named JSON
+├── package.json          # ✗ Not a locale-named JSON
+├── config/              # ✗ Not a valid locale name
+│   └── app.php          # ✗ Ignored
+├── en/
+│   ├── en.json          # ✗ JSON files not allowed in locale dirs
+│   └── config.json      # ✗ JSON files not allowed in locale dirs
+└── translations.json     # ✗ Not a locale-named JSON
+```
 
 ### Clean Output Structure
 
